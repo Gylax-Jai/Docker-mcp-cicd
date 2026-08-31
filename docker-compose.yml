@@ -1,0 +1,46 @@
+services:
+
+  # ── MongoDB Container ──────────────────────────────────
+  mongo:
+    image: mongo:latest
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - favorites-mongo-data:/data/db    # persists data on your PC
+    networks:
+      - favorites-network
+
+  # ── Node Backend Container ─────────────────────────────
+  backend:
+    build: ./backend                     # uses backend/Dockerfile
+    container_name: backend
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongo                            # waits for mongo to start first
+    environment:
+      - MONGO_URL=mongodb://mongo:27017/favorites_db
+    networks:
+      - favorites-network
+
+  # ── React Frontend Container ───────────────────────────
+  frontend:
+    build: ./frontend                    # uses frontend/Dockerfile
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend                          # waits for backend to start first
+    networks:
+      - favorites-network
+
+# ── Volumes ────────────────────────────────────────────
+volumes:
+  favorites-mongo-data:
+    external: true                       # use already-existing volume (not create new)
+
+# ── Network ────────────────────────────────────────────
+networks:
+  favorites-network:                     # all containers talk to each other
+    driver: bridge

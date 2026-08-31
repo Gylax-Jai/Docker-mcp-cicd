@@ -1,0 +1,44 @@
+name: CI Pipeline
+
+# Triggers: Run this pipeline on pushes to main, or on any Pull Request
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest # Runner: GitHub gives us a temporary Linux machine
+
+    steps:
+      # Checkout code from the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Build the Frontend Docker Image
+      - name: Build Frontend Image
+        run: docker build -t dockerexercise-frontend ./frontend
+
+      # Build the Backend Docker Image
+      - name: Build Backend Image
+        run: docker build -t dockerexercise-backend ./backend
+
+      # Start the Backend and Database using Docker Compose
+      # We run it in detached mode (-d) so the pipeline can continue to the next step
+      - name: Start Services
+        run: docker-compose up -d backend mongo
+
+      # Wait a few seconds for MongoDB and Node to fully start up
+      - name: Wait for services to be ready
+        run: sleep 10
+
+      # Test if the Backend API is working
+      # If curl fails to connect, or returns an error, the pipeline will fail ❌
+      - name: Check Backend API
+        run: curl -f http://localhost:5000/api/favorites || exit 1
+
+      # Clean up containers after the test is done
+      - name: Shut down services
+        if: always() # Run this even if previous steps failed
+        run: docker-compose down

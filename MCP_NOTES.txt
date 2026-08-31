@@ -1,0 +1,143 @@
+================================================================================
+                    MODEL CONTEXT PROTOCOL (MCP) HANDBOOK
+================================================================================
+
+MCP means Model Context Protocol.
+
+In very simple words: it is a standard way for an AI assistant to connect to 
+external tools outside the chat—your files, databases, calendars, GitHub, Slack, 
+APIs, and custom company tools.
+
+--------------------------------------------------------------------------------
+1. THE PROBLEM: WITHOUT MCP vs WITH MCP
+--------------------------------------------------------------------------------
+
+[ WITHOUT MCP ]
+You ask an AI:
+"Find the customer’s last three support tickets and draft a reply."
+The AI cannot actually see your support system unless someone builds a special 
+integration just for that specific AI application.
+
+[ WITH MCP ]
+Your support system exposes a small MCP server. The AI app connects to it and 
+can discover safe actions such as:
+* search_tickets(customer_email)
+* get_ticket_details(ticket_id)
+
+--------------------------------------------------------------------------------
+2. THE ARCHITECTURE (THE MAIN PIECES)
+--------------------------------------------------------------------------------
+
+        [ YOU ] (The User)
+           │
+           ▼
+  +--------------------+ 
+  |  AI APP / HOST     | (e.g., ChatGPT, Claude, VS Code, chat.js)
+  |                    | 
+  |  [ MCP CLIENT ]    | (The connector inside the app)
+  +--------+-----------+
+           │
+           │ (Communication Standard - e.g., STDIO or HTTP)
+           ▼
+  +--------------------+ 
+  |  [ MCP SERVER ]    | (A small program offering capabilities)
+  +--------+-----------+
+           │
+           ▼
+  +--------------------+ 
+  |  YOUR tools         | (Database, API, Docker, GitHub, Calendar)
+  +--------------------+ 
+
+--------------------------------------------------------------------------------
+3. WHAT DO MCP SERVERS OFFER?
+--------------------------------------------------------------------------------
+MCP servers typically offer three things to the AI:
+
+| Thing     | Plain Meaning                 | Example                              |
+|-----------|-------------------------------|--------------------------------------|
+| Tools     | Actions the AI can request    | "Create an issue", "look up order"   |
+| Resources | Readable information          | A document, DB record, repo history  |
+| Prompts   | Reusable task templates       | "Summarize this incident report"     |
+
+--------------------------------------------------------------------------------
+4. API vs MCP
+--------------------------------------------------------------------------------
+An API lets software talk to software.
+An MCP lets an AI assistant talk to tools and data in a standard way.
+
+Without MCP, we have to write multiple unique APIs for every single AI tool.
+With MCP, the AI uses one standard protocol, and the MCP server handles the APIs.
+
+| Feature             | API                               | MCP                                |
+|---------------------|-----------------------------------|------------------------------------|
+| Main User           | Developers / Applications         | AI Assistants / Agents             |
+| Purpose             | Perform service-specific actions  | Give AI access to tools/data       |
+| Standard            | Each service designs its own      | One common protocol for all AIs    |
+| Example             | GET /orders/123                   | get_order(order_id)                |
+| Connects to         | Database/service directly         | An MCP server (which calls APIs)   |
+
+Example: Asking an AI about your calendar
+You say: "What meetings do I have tomorrow, and find a free slot?"
+* Without MCP: The AI only knows what you type.
+* With MCP: AI assistant → Calendar MCP server → Google Calendar API → your calendar.
+
+================================================================================
+              MINI PROJECT: DOCKER + MONGODB AI ASSISTANT
+================================================================================
+
+In this project, we built a custom, production-grade Agentic AI architecture 
+running entirely on a local machine. 
+
+--------------------------------------------------------------------------------
+PROJECT ARCHITECTURE
+--------------------------------------------------------------------------------
+
+  [ You (Terminal) ] 
+         │ 
+         ▼ 
+  +--------------------------+        +---------------------------+
+  |       chat.js            |        |      Google Gemini Cloud  |
+  |  (The Waiter / Client)   | <====> |       (The Chef / AI)     |
+  |                          |        |                           |
+  | 1. Connects to Gemini    |        | - Reads text              |
+  | 2. Spawns index.js       |        | - Decides which tool to   |
+  | 3. Routes tool requests  |        |   run based on user input |
+  +----------+---------------+        +---------------------------+
+             │
+             │ (STDIO Connection)
+             ▼
+  +--------------------------+
+  |      index.js            |
+  |  (The Farmer / mcp Server)   |
+  |                          |
+  | 1. Has Docker Tools      |
+  | 2. Has MongoDB Tools     |
+  +----+---------------+-----+
+       │               │
+       ▼               ▼
+ [ MongoDB ]      [ Docker Engine ]
+ (Mongoose)       (child_process.exec)
+
+
+--------------------------------------------------------------------------------
+HOW THE CODE WORKS
+--------------------------------------------------------------------------------
+1. index.js (MCP Server):
+   - Purely focused on the backend.
+   - Uses `mongoose` to query the `favorites_db`.
+   - Uses Node's built-in `child_process.exec()` to open a hidden terminal 
+     and type `docker ps` or `docker logs` to interact with Docker.
+   - Exposes these functions as "Tools" using the `@modelcontextprotocol/sdk`.
+   - Knows absolutely NOTHING about Gemini or AI.
+
+2. chat.js (MCP Client):
+   - The middle-man.
+   - Invisibly spawns `node index.js` in the background.
+   - Asks the server for its tools (`mcpClient.listTools()`).
+   - Translates those tools and hands them to the Gemini API.
+   - When Gemini asks to run a tool, `chat.js` sends the request down to 
+     `index.js`, waits for the database/Docker data, and sends the raw data 
+     back to Gemini to format into a nice English sentence.
+
+Result: A fully decoupled, highly scalable AI system!
+================================================================================
