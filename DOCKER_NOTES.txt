@@ -551,3 +551,38 @@ Model Context Protocol (MCP) is an open standard protocol (JSON-RPC) that allows
 ========================================================================================================
                                      🎉 END OF HANDBOOK 🎉
 ========================================================================================================
+
+================================================================================
+          ADVANCED: LOCAL DEVELOPMENT (BIND MOUNTS VS NPM INSTALL)
+================================================================================
+
+THE OLD WAY (Without Docker):
+If a new developer joined your team, they had to:
+1. Install the exact right version of Node.js on their laptop.
+2. Run 
+pm install to download a massive folder of dependencies based on package.json.
+3. Start the app. 
+If they had the wrong Node version, or Mac vs Windows path issues, the app crashed.
+
+THE NEW WAY (With Docker Bind Mounts):
+You DO NOT need to install Node.js on your computer or run 
+pm install locally.
+Instead, we use a trick in docker-compose.yml called a "Bind Mount".
+
+A Bind Mount syncs your local code folder directly into the running Docker container.
+
+Example in docker-compose.yml:
+services:
+  frontend:
+    build: ./frontend
+    volumes:
+      - ./frontend:/app         <-- 1. Syncs your Windows folder to Linux container
+      - /app/node_modules       <-- 2. Protects the container's isolated node_modules
+
+HOW IT WORKS:
+1. You run docker compose up. 
+2. You open your code in VS Code and change a CSS file, then click "Save".
+3. The Bind Mount instantly beams that file change into the Linux container.
+4. React (running inside the container) detects the change and Hot Reloads the browser!
+
+You get the perfect Live Preview experience, but your actual laptop stays completely clean of Node.js and bulky node_modules folders!
