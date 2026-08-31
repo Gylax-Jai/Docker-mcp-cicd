@@ -24,6 +24,10 @@ jobs:
       - name: Build Backend Image
         run: docker build -t dockerexercise-backend ./backend
 
+      # Create the external volume required by docker-compose.yml
+      - name: Create Mongo Volume
+        run: docker volume create favorites-mongo-data
+
       # Start the Backend and Database using Docker Compose
       # We run it in detached mode (-d) so the pipeline can continue to the next step
       - name: Start Services
